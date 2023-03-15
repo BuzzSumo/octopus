@@ -109,6 +109,19 @@ module Octopus
       connection_pool.connection
     end
 
+    alias_method :safe_connection_without_fork_check, :safe_connection
+
+    def safe_connection_with_fork_check(connection_pool)
+      retries ||= 0
+      safe_connection_without_fork_check(connection_pool)
+    rescue NoMethodError
+      ActiveRecord::Base.establish_connection
+      ActiveRecord::Base.connection.initialize_shards(Octopus.config)
+      retry if (retries += 1) < 2
+    end
+
+    alias_method :safe_connection, :safe_connection_with_fork_check
+
     def select_connection
       safe_connection(shards[shard_name])
     end
