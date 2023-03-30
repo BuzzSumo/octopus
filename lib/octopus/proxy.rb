@@ -16,6 +16,8 @@ module Octopus
              :shards_slave_groups, :slave_groups, :replicated, :slaves_load_balancer,
              :config, :initialize_shards, :shard_name, to: :proxy_config, prefix: false
 
+    CONNECTION_RETRIES = 5
+
     def initialize(config = Octopus.config)
       self.proxy_config = Octopus::ProxyConfig.new(config)
     end
@@ -43,7 +45,7 @@ module Octopus
         if connection_bad(e.message)
           Octopus.logger.error "Octopus.logger.error execute: #{e.message}"
           conn.verify!
-          retry if (retries += 1) < 3
+          retry if (retries += 1) < CONNECTION_RETRIES
         else
           raise e
         end
@@ -60,7 +62,7 @@ module Octopus
         if connection_bad(e.message)
           Octopus.logger.error "Octopus.logger.error insert: #{e.message}"
           conn.verify!
-          retry if (retries += 1) < 3
+          retry if (retries += 1) < CONNECTION_RETRIES
         else
           raise e
         end
@@ -78,7 +80,7 @@ module Octopus
         if connection_bad(e.message)
           Octopus.logger.error "Octopus.logger.error update: #{e.message}"
           conn.verify!
-          retry if (retries += 1) < 3
+          retry if (retries += 1) < CONNECTION_RETRIES
         else
           raise e
         end
@@ -117,7 +119,7 @@ module Octopus
     rescue NoMethodError
       ActiveRecord::Base.establish_connection
       ActiveRecord::Base.connection.initialize_shards(Octopus.config)
-      retry if (retries += 1) < 2
+      retry if (retries += 1) < CONNECTION_RETRIES
     end
 
     alias_method :safe_connection, :safe_connection_with_fork_check
@@ -177,7 +179,7 @@ module Octopus
         if connection_bad(e.message)
           Octopus.logger.error "Octopus.logger.error transaction: #{e.message}"
           select_connection.verify!
-          retry if (retries += 1) < 3
+          retry if (retries += 1) < CONNECTION_RETRIES
         else
           raise e
         end
@@ -231,7 +233,7 @@ module Octopus
       shards.any? { |_k, v| v.connected? }
     rescue NoMethodError
       proxy_config.reinitialize_shards
-      retry if (retries += 1) < 2
+      retry if (retries += 1) < CONNECTION_RETRIES
     end
 
     def should_send_queries_to_shard_slave_group?(method)
@@ -301,7 +303,7 @@ module Octopus
         if connection_bad(e.message)
           Octopus.logger.error "Octopus.logger.error legacy_method_missing_logic: #{e.message}"
           select_connection.verify!
-          retry if (retries += 1) < 3
+          retry if (retries += 1) < CONNECTION_RETRIES
         else
           raise e
         end
