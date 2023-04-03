@@ -301,7 +301,7 @@ module Octopus
         end
       rescue ActiveRecord::StatementInvalid => e
         if connection_bad(e.message)
-          Octopus.logger.error "Octopus.logger.error legacy_method_missing_logic: #{e.message}"
+          Octopus.logger.error "Octopus.logger.error legacy_method_missing_logic: #{e.message}. Have retried #{retries} times."
           select_connection.verify!
           retry if (retries += 1) < CONNECTION_RETRIES
         else
